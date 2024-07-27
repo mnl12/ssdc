@@ -1,0 +1,11 @@
+__pycache__/
+.DS_Store
+debug/
+original_code/
+runs/
+venv/
+*.pth
+*.egg-info/
+.vscode/
+
+
