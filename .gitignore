@@ -7,5 +7,6 @@ venv/
 *.pth
 *.egg-info/
 .vscode/
+networks/
 
 
