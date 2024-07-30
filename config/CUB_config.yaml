@@ -1,0 +1,12 @@
+num_classes: 200
+BATCH_SIZE: 70
+EPOCHS: 8
+model_backbone: 'dinov2'
+q_size: 4700
+m: .99
+sgd_lr: .001
+img_train_size: 256
+img_train_crop: 224
+img_test_size: 480
+img_test_crop: 448
+

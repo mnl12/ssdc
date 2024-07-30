@@ -1,3 +1,5 @@
+import argparse
+import yaml
 import torch
 import torchvision
 from torchvision import models
@@ -121,38 +123,47 @@ def test(test_loader, model, epoch):
     return current_best_CorLoc, current_best_CorLoc_threshold
 
 
+#read the config file
+with open("config/CUB_config.yaml") as f:
+    cfg = yaml.load(f, Loader=yaml.FullLoader)
+
+print('Batch size is==================>', cfg['BATCH_SIZE'])
+
+# Arg parser
+parser = argparse.ArgumentParser()
+parser.add_argument("--db_root", help="CUB database root folder", default='/home/devel/dev/data2/datasets/CUB/CUB_200_2011/', type=str)
+
+
+args = parser.parse_args()
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
 
 db_name='cub'
 
-db_root='/home/devel/dev/data2/datasets/CUB/CUB_200_2011/'
-num_classes=200
+db_root=args.db_root
+num_classes=cfg['num_classes']
 
-BATCH_SIZE=70
-EPOCHS = 8
-WORKERS=4
-model_backbone='dinov2'
+BATCH_SIZE=cfg['BATCH_SIZE']
+EPOCHS = cfg['EPOCHS']
+WORKERS=cfg['WORKERS']
+sgd_lr=cfg['sgd_lr']
+model_backbone=cfg['model_backbone']
+q_size=cfg['q_size']
+m=cfg['m']
 
-if model_backbone=='resnet':
-    img_train_size=256
-    img_train_crop=224
-    img_test_size=480
-    img_test_crop=448
-else:
-    BATCH_SIZE=70
-    img_train_size=256
-    img_train_crop=224
-    img_test_size=480
-    img_test_crop=448
+img_train_size=cfg['img_train_size']
+img_train_crop=cfg['img_train_crop']
+img_test_size=cfg['img_test_size']
+img_test_crop=cfg['img_test_crop']
 
 
 
 
 
-criterion = [SimMaxLoss(metric='cos', alpha=0.05).cuda(), SimMinLoss(metric='cos').cuda(),
-                 SimMaxLoss(metric='cos', alpha=0.05).cuda()]
+
 
 train_transforms = transforms.Compose([
     transforms.Resize(size=(img_train_size, img_train_size)),
@@ -217,8 +228,7 @@ if model_backbone=='resnet':
 else:
     cin=384
 
-q_size=4700
-m=.99
+
 
 
 #Define model
@@ -235,7 +245,7 @@ fg_q=torch.empty(size=(1,embd_dim)).to(device)
 bg_q=torch.empty(size=(1, embd_dim)).to(device)
 
 
-optimizer = torch.optim.SGD(model.parameters(), lr=.001)
+optimizer = torch.optim.SGD(model.parameters(), lr=sgd_lr)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
 
@@ -293,10 +303,7 @@ def train_one_epoch(epoch_index, tb_writer):
             # Compute the loss and its gradients
             loss = loss_fn(fg_feats1, bg_feats1, fg_q, bg_q)
 
-            #loss1 = criterion[0](bg_feats1)
-            #loss2 = criterion[1](bg_feats1, fg_feats1)
-            #loss3 = criterion[2](fg_feats1)
-            #loss = loss1 + loss2 + loss3
+
             loss.backward()
 
             # Adjust learning weights
