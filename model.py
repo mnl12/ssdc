@@ -79,7 +79,7 @@ class PrintLayer(nn.Module):
         return x    
     
 class Disentangler(nn.Module):
-    def __init__(self, cin):
+    def __init__(self, cin, num_classes):
         super(Disentangler, self).__init__()
         mid_layer_dim=512
         mid_layer_dim2=256
@@ -95,19 +95,34 @@ class Disentangler(nn.Module):
         self.bn_head3 = nn.BatchNorm2d(1)
         self.bn_head1 = nn.BatchNorm2d(mid_layer_dim)
         self.bn_head2 = nn.BatchNorm2d(mid_layer_dim2)
+        self.bn_cin= nn.BatchNorm2d(cin)
 
-    def forward(self, x):
+        self.trainable_vectors = nn.Parameter(torch.randn(num_classes, mid_layer_dim2))
+        #self.trainable_vectors.requires_grad = True
+
+    def forward(self, x, labels):
         N, C, H, W = x.size()
         x1=self.relu_func(self.bn_head1(self.activation_head1(x)))
         x2=self.relu_func(self.bn_head2(self.activation_head2(x1)))
-        ccam = torch.sigmoid(self.bn_head3(self.activation_head3(x2)))
-        #ccam = torch.sigmoid(self.bn_head(self.activation_head2(x)))
+        
+        
+
+        if labels is not None:
+            selected_vector = self.trainable_vectors[labels] #[N,C]
+            #selected_vector=self.trainable_vector
+            #selected_vector=nn.functional.normalize(selected_vector, p=2, dim=-1)
+            ccam=torch.sigmoid(self.bn_head3(torch.sum(selected_vector.unsqueeze(2).unsqueeze(3)*x2, dim=1, keepdim=True))) #[N, 1, H, W]
+        else:
+            ccam = torch.sigmoid(self.bn_head3(self.activation_head3(x2)))
+
+
 
 
         ccam_ = ccam.reshape(N, 1, H * W)                          # [N, 1, H*W]
         x = x.reshape(N, C, H * W).permute(0, 2, 1).contiguous()   # [N, H*W, C]
         fg_feats = torch.matmul(ccam_, x) / (H * W)                # [N, 1, C]
         bg_feats = torch.matmul(1 - ccam_, x) / (H * W)            # [N, 1, C]
+        
 
         return fg_feats.reshape(x.size(0), -1), bg_feats.reshape(x.size(0), -1), ccam
 
@@ -133,7 +148,7 @@ class FeatureExtractor(torch.nn.Module):
 
 
 class Network(nn.Module):
-    def __init__(self, pretrained='mocov2', cin=None, backbone_name='resnet'):
+    def __init__(self, pretrained='mocov2', cin=None, num_classes=100, backbone_name='resnet'):
         super(Network, self).__init__()
         self.backbone_name=backbone_name
         if backbone_name=='resnet':
@@ -145,10 +160,10 @@ class Network(nn.Module):
 
         #self.distiller=Distillator(cin)
         #self.print_layer=PrintLayer()
-        self.ac_head = Disentangler(cin)
+        self.ac_head = Disentangler(cin, num_classes)
         self.from_scratch_layers = [self.ac_head]
 
-    def forward(self, x):
+    def forward(self, x, labels):
         
         if self.backbone_name=="resnet":
             feats = self.backbone(x)
@@ -161,7 +176,7 @@ class Network(nn.Module):
             feats=(torch.reshape(seg_features, (seg_features.shape[0], int(H1/14), int(W1/14), seg_features.shape[2])))
             feats=feats.permute(0,3,1,2)
             #print("features shapes are", feats.shape)
-        fg_feats, bg_feats, ccam = self.ac_head(feats)
+        fg_feats, bg_feats, ccam = self.ac_head(feats, labels)
 
         return fg_feats, bg_feats, ccam
 
@@ -185,5 +200,5 @@ class Network(nn.Module):
         return groups
 
 
-def get_model(pretrained, cin=None):
-    return Network(pretrained=pretrained, cin=cin, backbone_name='dinov2')
+def get_model(pretrained, num_classes, cin=None):
+    return Network(pretrained=pretrained, cin=cin, num_classes=num_classes, backbone_name='dinov2')

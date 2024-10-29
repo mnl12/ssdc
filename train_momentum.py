@@ -23,6 +23,9 @@ from PIL import Image
 
 ind=True
 
+print("Torch version is :::::::")
+
+
 
 def test(test_loader, model, epoch):
 
@@ -53,7 +56,7 @@ def test(test_loader, model, epoch):
 
 
             # inference the model
-            fg_feats, bg_feats, ccam = model(input)
+            fg_feats, bg_feats, ccam = model(input, target)
             #print('ccam indicator is', ind)
 
             if ind:
@@ -93,13 +96,16 @@ def test(test_loader, model, epoch):
 
                 Corcorrect[j] += IOU.sum()
 
+            '''
             if i%30==0:
                 visualize_heatmap(1, 'contrastive_dino', input.clone().detach(), ccam, cls_name, img_name,
-                                      phase='test', bboxes=pred_boxes_t[NUM_THRESHOLD // 2], gt_bboxes=bboxes)
+                                      phase='test', bboxes=pred_boxes_t[14], gt_bboxes=bboxes)
                 print("Visual data saved")
+            '''
 
             batch_time.update(time.time() - end)
             end = time.time()
+        
 
             # print the current testing status
 
@@ -127,32 +133,33 @@ def test(test_loader, model, epoch):
 with open("config/CUB_config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-print('Batch size is==================>', cfg['BATCH_SIZE'])
 
 # Arg parser
 parser = argparse.ArgumentParser()
-parser.add_argument("--db_root", help="CUB database root folder", default='/home/devel/dev/data2/datasets/CUB/CUB_200_2011/', type=str)
+parser.add_argument("--db_root", help="CUB database root folder", default='/home/milad/milad/image_proc/datasets/CUB/CUB_200_2011', type=str)
 
 
 args = parser.parse_args()
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print('The device is ====================>', device)
 
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 writer = SummaryWriter('runs/fashion_trainer_{}'.format(timestamp))
 
 db_name='cub'
+weakly_supervised=False
 
 db_root=args.db_root
 num_classes=cfg['num_classes']
 
-BATCH_SIZE=cfg['BATCH_SIZE']
+BATCH_SIZE=100
 EPOCHS = cfg['EPOCHS']
-WORKERS=cfg['WORKERS']
+WORKERS=10
 sgd_lr=cfg['sgd_lr']
 model_backbone=cfg['model_backbone']
 q_size=cfg['q_size']
-m=cfg['m']
+m=.99
 
 img_train_size=cfg['img_train_size']
 img_train_crop=cfg['img_train_crop']
@@ -233,8 +240,8 @@ else:
 
 #Define model
 #model=Network(pretrained='mocov2', cin=2048+1024)
-model = get_model(pretrained='detco', cin=cin).cuda()
-model_k = get_model(pretrained='detco', cin=cin).cuda()
+model = get_model('detco', num_classes, cin=cin).cuda()
+model_k = get_model('detco', num_classes, cin=cin).cuda()
 
 model = model.to(device)
 
@@ -287,10 +294,15 @@ def train_one_epoch(epoch_index, tb_writer):
 
         # Make predictions for this batch
         with torch.set_grad_enabled(True):
-            fg_feats1, bg_feats1, ccam1 = model(img)
+            if weakly_supervised:
+                input_labels=labels
+            else:
+                input_labels=None
+            
+            fg_feats1, bg_feats1, ccam1 = model(img, input_labels)
             model.backbone.train(False)
             model_k.train(False)
-            fg_feats2, bg_feats2, ccam2 = model_k(img_p)
+            fg_feats2, bg_feats2, ccam2 = model_k(img_p, input_labels)
 
             fg_feats2=fg_feats2.detach()
             bg_feats2=bg_feats2.detach()
