@@ -53,10 +53,13 @@ def test(test_loader, model, epoch):
             # data to gpu
             input = input.cuda()
             target = target.cuda()
-
+            if weakly_supervised:
+                input_target=target
+            else:
+                input_target=None
 
             # inference the model
-            fg_feats, bg_feats, ccam = model(input, target)
+            fg_feats, bg_feats, ccam = model(input, input_target)
             #print('ccam indicator is', ind)
 
             if ind:

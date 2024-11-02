@@ -1,3 +1,4 @@
+WORKERS: 1
 num_classes: 200
 BATCH_SIZE: 70
 EPOCHS: 8
