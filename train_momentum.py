@@ -159,7 +159,7 @@ num_classes=cfg['num_classes']
 BATCH_SIZE=100
 EPOCHS = cfg['EPOCHS']
 WORKERS=10
-sgd_lr=cfg['sgd_lr']
+sgd_lr=.001
 model_backbone=cfg['model_backbone']
 q_size=cfg['q_size']
 m=.99
@@ -327,6 +327,8 @@ def train_one_epoch(epoch_index, tb_writer):
         # Gather data and report
 
         scheduler.step()
+        current_lr = scheduler.get_last_lr()[0]
+        print("Current Learning Rate:", current_lr)
         running_loss += loss.item()
         if i % 2 == 1:
             last_loss = running_loss / 2 # loss per batch
@@ -392,10 +394,14 @@ for epoch in range(EPOCHS):
     model_k.train(False)
     #momentum update
 
-
+    #addd weakly supervised lables
+    if epoch ==2:
+        optimizer = torch.optim.SGD(model.parameters(), lr=sgd_lr)
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+        weakly_supervised=True
 
     avg_loss = train_one_epoch(epoch, writer)
-
+    
     model.eval()
     best_CorLoc, best_threshold =test(test_loader, model, epoch)
     global_best_threshold = best_threshold

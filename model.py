@@ -97,7 +97,7 @@ class Disentangler(nn.Module):
         self.bn_head2 = nn.BatchNorm2d(mid_layer_dim2)
         self.bn_cin= nn.BatchNorm2d(cin)
 
-        self.trainable_vectors = nn.Parameter(torch.randn(num_classes, mid_layer_dim2))
+        self.trainable_vectors = nn.Parameter(torch.zeros(num_classes, mid_layer_dim2))
         #self.trainable_vectors.requires_grad = True
 
     def forward(self, x, labels):
@@ -111,7 +111,8 @@ class Disentangler(nn.Module):
             selected_vector = self.trainable_vectors[labels] #[N,C]
             #selected_vector=self.trainable_vector
             #selected_vector=nn.functional.normalize(selected_vector, p=2, dim=-1)
-            ccam=torch.sigmoid(self.bn_head3(torch.sum(selected_vector.unsqueeze(2).unsqueeze(3)*x2, dim=1, keepdim=True))) #[N, 1, H, W]
+            #ccam=torch.sigmoid(self.bn_head3(torch.sum(selected_vector.unsqueeze(2).unsqueeze(3)*x2, dim=1, keepdim=True))) #[N, 1, H, W]
+            ccam=torch.sigmoid(self.bn_head3(torch.add(torch.sum(selected_vector.unsqueeze(2).unsqueeze(3)*x2, dim=1, keepdim=True), self.activation_head3(x2)))) #[N, 1, H, W]
         else:
             ccam = torch.sigmoid(self.bn_head3(self.activation_head3(x2)))
 
