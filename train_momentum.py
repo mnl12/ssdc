@@ -53,7 +53,7 @@ def test(test_loader, model, epoch):
 
 
             # inference the model
-            fg_feats, bg_feats, ccam = model(input)
+            fg_feats, bg_feats, ccam, cls_logits = model(input)
             #print('ccam indicator is', ind)
 
             if ind:
@@ -131,7 +131,7 @@ print('Batch size is==================>', cfg['BATCH_SIZE'])
 
 # Arg parser
 parser = argparse.ArgumentParser()
-parser.add_argument("--db_root", help="CUB database root folder", default='/home/devel/dev/data2/datasets/CUB/CUB_200_2011/', type=str)
+parser.add_argument("--db_root", help="CUB database root folder", default='/home/datasets/CUB_200_2011', type=str)
 
 
 args = parser.parse_args()
@@ -148,7 +148,7 @@ num_classes=cfg['num_classes']
 
 BATCH_SIZE=cfg['BATCH_SIZE']
 EPOCHS = cfg['EPOCHS']
-WORKERS=cfg['WORKERS']
+WORKERS=10
 sgd_lr=cfg['sgd_lr']
 model_backbone=cfg['model_backbone']
 q_size=cfg['q_size']
@@ -233,8 +233,8 @@ else:
 
 #Define model
 #model=Network(pretrained='mocov2', cin=2048+1024)
-model = get_model(pretrained='detco', cin=cin).cuda()
-model_k = get_model(pretrained='detco', cin=cin).cuda()
+model = get_model(img_train_crop, pretrained='detco', cin=cin).cuda()
+model_k = get_model(img_train_crop, pretrained='detco', cin=cin).cuda()
 
 model = model.to(device)
 
@@ -287,10 +287,10 @@ def train_one_epoch(epoch_index, tb_writer):
 
         # Make predictions for this batch
         with torch.set_grad_enabled(True):
-            fg_feats1, bg_feats1, ccam1 = model(img)
+            fg_feats1, bg_feats1, ccam1, cls_logits = model(img)
             model.backbone.train(False)
             model_k.train(False)
-            fg_feats2, bg_feats2, ccam2 = model_k(img_p)
+            fg_feats2, bg_feats2, ccam2, cls_logits2 = model_k(img_p)
 
             fg_feats2=fg_feats2.detach()
             bg_feats2=bg_feats2.detach()
@@ -342,7 +342,7 @@ def extract(db_root, db_name, train_loader, model, threshold):
             input = input.cuda()
 
             # inference the model
-            fg_feats, bg_feats, ccam = model(input)
+            fg_feats, bg_feats, ccam, cls_logits = model(input)
 
             if ind:
                 ccam = 1 - ccam
