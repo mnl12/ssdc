@@ -55,6 +55,7 @@ def test(test_loader, model, epoch):
             # inference the model
             fg_feats, bg_feats, ccam, cls_logits = model(input)
             #print('ccam indicator is', ind)
+            
 
             if ind:
                 ccam = 1 - ccam
@@ -127,7 +128,7 @@ def test(test_loader, model, epoch):
 with open("config/CUB_config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-print('Batch size is==================>', cfg['BATCH_SIZE'])
+
 
 # Arg parser
 parser = argparse.ArgumentParser()
@@ -146,13 +147,13 @@ db_name='cub'
 db_root=args.db_root
 num_classes=cfg['num_classes']
 
-BATCH_SIZE=cfg['BATCH_SIZE']
+BATCH_SIZE=60
 EPOCHS = cfg['EPOCHS']
 WORKERS=10
-sgd_lr=cfg['sgd_lr']
+
 model_backbone=cfg['model_backbone']
 q_size=cfg['q_size']
-m=cfg['m']
+m=.999
 
 img_train_size=cfg['img_train_size']
 img_train_crop=cfg['img_train_crop']
@@ -160,7 +161,7 @@ img_test_size=cfg['img_test_size']
 img_test_crop=cfg['img_test_crop']
 
 
-
+sgd_lr=.07
 
 
 

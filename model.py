@@ -122,7 +122,7 @@ class ResNetSeries(nn.Module):
     
 class Transformer_Classifier(nn.Module):
     def __init__(self, image_size, input_dim, patch_size=14, num_classes=200, embed_dim=64, 
-                 num_heads=4, mlp_dim=128, num_layers=4, dropout=0.1, from_feat=True):
+                 num_heads=4, mlp_dim=128, num_layers=6, dropout=0.1, from_feat=True):
         super(Transformer_Classifier, self).__init__()
         self.embed_dim=embed_dim
         self.dim_adapt_conv=nn.Conv2d(in_channels=input_dim, out_channels=self.embed_dim, kernel_size=1)
@@ -169,8 +169,9 @@ class Transformer_Classifier(nn.Module):
         if self.num_patches != x_num_patch:
             patch_pos_emb=self.pos_embed[:,1:,:]
             cls_pos_emb=self.pos_embed[:,0:1,:]
-            dim_orig=math.sqrt(self.num_patches)
-            dim_x=math.sqrt(x_num_patch)
+            dim_orig=int(math.sqrt(self.num_patches))
+            dim_x=int(math.sqrt(x_num_patch))
+            assert x_num_patch==dim_x*dim_x
             #interpolate the embedding pose
             x_pos_embed = torch.nn.functional.interpolate(
                 patch_pos_emb.reshape(1, dim_orig, dim_orig, self.embed_dim).permute(0, 3, 1, 2), size=(dim_x, dim_x), mode='bicubic'
@@ -199,6 +200,7 @@ class Transformer_Classifier(nn.Module):
         seg_prob=torch.sigmoid(torch.sum(seg_tokens*self.segment_vector, dim=-1))
 
         ccam_ = seg_prob.reshape(N, 1, H * W)                      # [N, 1, H*W]
+        seg_prob=seg_prob.reshape(N,1, H, W)
         x_out = x_input.reshape(N, C_input, H * W).permute(0, 2, 1).contiguous()   # [N, H*W, C]
         fg_feats = torch.matmul(ccam_, x_out) / (H * W)                # [N, 1, C]
         bg_feats = torch.matmul(1 - ccam_, x_out) / (H * W)            # [N, 1, C]

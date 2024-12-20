@@ -169,7 +169,7 @@ def visualize_heatmap(config, experiments, images, attmaps, cls_name, image_name
         colormap = cv2.applyColorMap(cv2.resize(attmap, (w, h)), cmapy.cmap('seismic'))
 
         grid = make_grid(images[i].unsqueeze(0), nrow=1, padding=0, pad_value=0,
-                         normalize=True, range=None)
+                         normalize=True, value_range=None)
         # Add 0.5 after unnormalizing to [0, 255] to round to nearest integer
         image = grid.mul_(255).add_(0.5).clamp_(0, 255).permute(1, 2, 0).to('cpu', torch.uint8).numpy()[..., ::-1]
         # print(image.shape, colormap.shape)
