@@ -227,6 +227,7 @@ q_size=100000
 m=.99
 adaptive_q_size=0
 max_q_size=26000
+sgd_lr=.08
 
 #Define model
 #model=Network(pretrained='detco', cin=2048+1024)
@@ -240,7 +241,7 @@ fg_q=torch.empty(size=(1,cin)).to(device)
 bg_q=torch.empty(size=(1, cin)).to(device)
 
 
-optimizer = torch.optim.SGD(model.parameters(), lr=.005)
+optimizer = torch.optim.SGD(model.parameters(), lr=sgd_lr)
 scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
 
 
@@ -249,6 +250,8 @@ num_iters = len(train_loader)
 
 
 loss_fn = ContrastiveLoss_fg_bg(.02, num_sim=10, num_dis_sim=30)
+cross_entropy_loss = nn.CrossEntropyLoss()
+loss_reg=.05
 
 
 epoch_number = 0
@@ -287,10 +290,10 @@ def train_one_epoch(epoch_index, tb_writer):
         optimizer.zero_grad()
         # Make predictions for this batch
         with torch.set_grad_enabled(True):
-            fg_feats1, bg_feats1, ccam1 = model(img)
+            fg_feats1, bg_feats1, ccam1, cls_logits = model(img)
             model.backbone.train(False)
             model_k.train(False)
-            fg_feats2, bg_feats2, ccam2 = model_k(img_p)
+            fg_feats2, bg_feats2, ccam2, cls_logits2 = model_k(img_p)
 
             fg_feats2=fg_feats2.detach()
             bg_feats2=bg_feats2.detach()
@@ -301,12 +304,8 @@ def train_one_epoch(epoch_index, tb_writer):
                    -min(q_size, bg_feats2.shape[0] + bg_q.shape[0] - 1):]
             #print('q_size', fg_q.shape[0])
             # Compute the loss and its gradients
-            loss = loss_fn(fg_feats1, bg_feats1, fg_q, bg_q)
+            loss = loss_fn(fg_feats1, bg_feats1, fg_q, bg_q)+ loss_reg*cross_entropy_loss(cls_logits, labels)
 
-            #loss1 = criterion[0](bg_feats1)
-            #loss2 = criterion[1](bg_feats1, fg_feats1)
-            #loss3 = criterion[2](fg_feats1)
-            #loss = loss1 + loss2 + loss3
             
             loss.backward()
 
@@ -334,8 +333,6 @@ def extract(db_root, db_name, train_loader, model, threshold):
     # set up the averagemeters
     batch_time = AverageMeter()
 
-    print(f'use threshold: {threshold}')
-
     # switch to evaluate mode
     model.eval()
 
@@ -352,7 +349,7 @@ def extract(db_root, db_name, train_loader, model, threshold):
             input = input.cuda()
 
             # inference the model
-            fg_feats, bg_feats, ccam = model(input)
+            fg_feats, bg_feats, ccam, cls_logits = model(input)
             if flag:
                 ccam = 1 - ccam
 
@@ -368,7 +365,7 @@ def extract(db_root, db_name, train_loader, model, threshold):
             pred_boxes = pred_boxes_t
             experiment_name='momentum_wsol_ilsvrc'
             # save predicted bboxes
-            save_bbox_as_json(db_root, db_name, experiment_name, i, 0, pred_boxes, cls_name, img_name)
+            #save_bbox_as_json(db_root, db_name, experiment_name, i, 0, pred_boxes, cls_name, img_name)
 
             # print the current testing status
             if i % 100 == 0:
