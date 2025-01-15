@@ -94,7 +94,7 @@ def test(test_loader, model, epoch):
 
                 Corcorrect[j] += IOU.sum()
 
-            if i%30==0:
+            if SAVE_VISUAL_DATA and i%30==0:
                 visualize_heatmap(1, 'contrastive_dino', input.clone().detach(), ccam, cls_name, img_name,
                                       phase='test', bboxes=pred_boxes_t[NUM_THRESHOLD // 2], gt_bboxes=bboxes)
                 print("Visual data saved")
@@ -148,7 +148,7 @@ db_root=args.db_root
 num_classes=cfg['num_classes']
 
 BATCH_SIZE=60
-EPOCHS = cfg['EPOCHS']
+EPOCHS = 2
 WORKERS=10
 
 model_backbone=cfg['model_backbone']
@@ -160,8 +160,8 @@ img_train_crop=cfg['img_train_crop']
 img_test_size=cfg['img_test_size']
 img_test_crop=cfg['img_test_crop']
 
-
-sgd_lr=.07
+SAVE_VISUAL_DATA=True
+sgd_lr=.08
 
 
 
@@ -255,6 +255,8 @@ num_iters = len(train_loader)
 
 
 loss_fn = ContrastiveLoss_fg_bg(.02)
+cross_entropy_loss = nn.CrossEntropyLoss()
+loss_reg=.05
 
 
 epoch_number = 0
@@ -302,7 +304,7 @@ def train_one_epoch(epoch_index, tb_writer):
                    -min(q_size, bg_feats2.shape[0] + bg_q.shape[0] - 1):]
             #print('q_size', fg_q.shape[0])
             # Compute the loss and its gradients
-            loss = loss_fn(fg_feats1, bg_feats1, fg_q, bg_q)
+            loss = loss_fn(fg_feats1, bg_feats1, fg_q, bg_q)+ loss_reg*cross_entropy_loss(cls_logits, labels)
 
 
             loss.backward()
@@ -363,7 +365,7 @@ def extract(db_root, db_name, train_loader, model, threshold):
             experiment_name='momentum_wsol'
 
             # save predicted bboxes
-            save_bbox_as_json(db_root, db_name, experiment_name, i, 0, pred_boxes, cls_name, img_name)
+            #save_bbox_as_json(db_root, db_name, experiment_name, i, 0, pred_boxes, cls_name, img_name)
 
             # print the current testing status
             if i % 100 == 0:
