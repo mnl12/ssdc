@@ -7,7 +7,7 @@ Weakly-supervised object localization is the task of identifying the objects in 
 ## 🌟 Highlights  
 - ✅  State-of-the-art method for weakly supervised object localization based on ViTs
 - ✅  The method is completely based on visual features and unlike other methods does not require heuristic text prompts
-- ✅  Only a lightweight transformer is trained resulting in a fast training
+- ✅  Training is done on a quite lightweight network, resulting in a fast training
 
 ## 🖼️ Method Overview  
 ![Overall diagram](images/wsol_diagram.drawio2.png)  
