@@ -1,4 +1,4 @@
-# 📄 Supervised object localization using vision transformer and Visual Foundation Models:  
+# 📄 Weakly-supervised Object Localization using Vision Transformer and Visual Foundation Models:  
 
 
 ## 📌 Abstract  
@@ -10,6 +10,6 @@ Weakly-supervised object localization is the task of identifying the objects in 
 - ✅  Only a lightweight transformer is trained resulting in a fast training
 
 ## 🖼️ Method Overview  
-![Caption for the image](path/to/image.png)  
-*Figure 1: Brief caption describing the image.*  
+![Overall diagram](images/wsol_diagram.drawio2.png)  
+*patch tockens extracted from the base network (pretrained and frozen) are classified by a localization network trained with the momentum contrast \cite{moco}. The localization network additionally recieves a class-specific feature which encode information related to the specific class and is selected based on the predicted class from the Base ViT classification token. The localization network produces a heatmap indicating the probability of the feature belonging to the foreground. Embedding extractor outputs a vector embedding based on the features and the heatmap. The vector embeddings are stored in the queue and are used in the contrastive loss.*  
 
