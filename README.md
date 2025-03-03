@@ -12,4 +12,13 @@ Weakly-supervised object localization is the task of identifying the objects in 
 ## 🖼️ Method Overview  
 ![Overall diagram](images/wsol_diagram.drawio2.png)  
 *patch tockens extracted from the base network (pretrained and frozen) are classified by a localization network trained with the momentum contrast. The localization network additionally recieves a class-specific feature which encode information related to the specific class and is selected based on the predicted class from the Base ViT classification token. The localization network produces a heatmap indicating the probability of the feature belonging to the foreground. Embedding extractor outputs a vector embedding based on the features and the heatmap. The vector embeddings are stored in the queue and are used in the contrastive loss.*  
-
+## Results
+![Results](images/Results_heatmap.png)  
+<table>
+  <tr>
+    <th  width="400">Input Image</th>
+    <th  width="400">CAM</th>
+    <th  width="400">C2AM</th>
+    <th  width="400">Ours</th>
+  </tr>
+</table>
